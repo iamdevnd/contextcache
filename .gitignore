@@ -49,3 +49,6 @@ coverage.xml
 
 # Pytest
 .pytest_cache/
+venv/
+.python-version
+.env

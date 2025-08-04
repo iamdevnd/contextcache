@@ -1,12 +1,20 @@
 ContextCache
-Copyright (c) 2025 Nikhil Dodda
+Copyright © 2025 Nikhil Dodda
 
 This software is licensed under the PolyForm Noncommercial License 1.0.0.
-The full license text is available in the LICENSE file.
+See the LICENSE file or <https://polyformproject.org/licenses/noncommercial/1.0.0> for details.
 
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 Attribution Notice:
-This software was created by DN.
-Project repository: https://github.com/doddanikhil/contextcache
+This software was created by Nikhil Dodda (DN) and is provided for non-commercial use only.
 
-Third-party libraries and their licenses can be found in the 
-respective package files (requirements.txt, package.json).
+The official repository is: https://github.com/doddanikhil/contextcache
+
+For commercial licensing, contact: dn@nikhild.pro
+Attribution must be preserved in all redistributions and forks.
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Third-Party Libraries:
+All third-party libraries and their licenses are listed in:
+- `requirements.txt` (Python backend)
+- `package.json` (React frontend)
