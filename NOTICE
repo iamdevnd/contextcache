@@ -1,0 +1,12 @@
+ContextCache
+Copyright (c) 2025 Nikhil Dodda
+
+This software is licensed under the PolyForm Noncommercial License 1.0.0.
+The full license text is available in the LICENSE file.
+
+Attribution Notice:
+This software was created by DN.
+Project repository: https://github.com/doddanikhil/contextcache
+
+Third-party libraries and their licenses can be found in the 
+respective package files (requirements.txt, package.json).

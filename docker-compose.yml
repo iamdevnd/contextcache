@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  arangodb:
+    image: arangodb:latest
+    container_name: contextcache-db
+    ports:
+      - "8529:8529"
+    environment:
+      ARANGO_ROOT_PASSWORD: ${ARANGO_ROOT_PASSWORD}
+    volumes:
+      - ./data/arango:/var/lib/arangodb3
+    networks:
+      - contextcache-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8529/_api/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: contextcache-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ARANGO_HOST=arangodb
+      - ARANGO_PORT=8529
+      - ARANGO_ROOT_PASSWORD=${ARANGO_ROOT_PASSWORD}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      arangodb:
+        condition: service_healthy
+    networks:
+      - contextcache-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: contextcache-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - contextcache-network
+
+networks:
+  contextcache-network:
+    driver: bridge
