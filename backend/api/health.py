@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from ..db.arango_driver import get_arango_driver
-from typing import Dict
+from typing import Dict, Any
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ async def health_check() -> Dict[str, str]:
     }
 
 @router.get("/stats")
-async def get_stats() -> Dict[str, any]:
+async def get_stats() -> Dict[str, Any]:
     """Get system statistics"""
     db = get_arango_driver()
     stats = db.get_graph_stats()
