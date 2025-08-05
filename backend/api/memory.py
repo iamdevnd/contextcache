@@ -160,3 +160,44 @@ async def export_memory(current_user: TokenData = Depends(get_current_user)):
             }
         }
     }
+
+# Add this new endpoint to backend/api/memory.py
+# Add it after the existing endpoints
+
+@router.get("/graph")
+async def get_graph_data(limit: int = 100):
+    """Get graph data for visualization"""
+    db = get_arango_driver()
+    
+    # Get nodes and edges
+    nodes_collection = db.db.collection('mem_nodes')
+    edges_collection = db.db.collection('mem_edges')
+    
+    nodes = list(nodes_collection.find({}, limit=limit))
+    edges = list(edges_collection.find({}, limit=limit))
+    
+    # Convert to format expected by frontend
+    graph_data = {
+        "nodes": [
+            {
+                "_key": node["_key"],
+                "entity": node.get("entity", ""),
+                "entity_type": node.get("entity_type", "entity")
+            }
+            for node in nodes
+        ],
+        "edges": [
+            {
+                "_from": edge["_from"],
+                "_to": edge["_to"],
+                "verb": edge.get("verb", "related"),
+                "score": edge.get("score", 1.0)
+            }
+            for edge in edges
+        ]
+    }
+    
+    return {
+        "success": True,
+        "graph": graph_data
+    }

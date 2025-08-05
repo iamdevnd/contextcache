@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,7 +6,14 @@ import { useAuthStore } from '@/lib/store/auth';
 import api from '@/lib/api';
 import { endpoints } from '@/lib/config';
 import toast from 'react-hot-toast';
-import { FiLogOut, FiDatabase, FiSearch, FiUpload } from 'react-icons/fi';
+import { FiLogOut, FiDatabase, FiSearch, FiUpload, FiEye } from 'react-icons/fi';
+import dynamic from 'next/dynamic';
+
+// Dynamically import GraphView to avoid SSR issues
+const GraphView = dynamic(() => import('@/components/GraphView'), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
+});
 
 export default function HomePage() {
   const router = useRouter();
@@ -17,6 +23,9 @@ export default function HomePage() {
   const [stats, setStats] = useState<any>(null);
   const [queryText, setQueryText] = useState('');
   const [queryResults, setQueryResults] = useState<any>(null);
+  const [graphData, setGraphData] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'input' | 'graph'>('input');
 
   useEffect(() => {
     checkAuth().then(() => {
@@ -24,6 +33,7 @@ export default function HomePage() {
         router.push('/login');
       } else {
         fetchStats();
+        fetchGraphData();
       }
     });
   }, [isAuthenticated, checkAuth, router]);
@@ -34,6 +44,15 @@ export default function HomePage() {
       setStats(response.data.stats);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const fetchGraphData = async () => {
+    try {
+      const response = await api.get('/api/memory/graph');
+      setGraphData(response.data.graph);
+    } catch (error) {
+      console.error('Failed to fetch graph data:', error);
     }
   };
 
@@ -54,7 +73,8 @@ export default function HomePage() {
         `Memory inserted! Extracted ${response.data.triples_extracted} triples.`
       );
       setInputText('');
-      fetchStats(); // Refresh stats
+      fetchStats();
+      fetchGraphData(); // Refresh graph
     } catch (error) {
       toast.error('Failed to insert memory');
     } finally {
@@ -81,6 +101,14 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleNodeClick = (nodeData: any) => {
+    setSelectedNode(nodeData);
+    toast(`Selected: ${nodeData.label}`, {
+      icon: '📍',
+      duration: 2000,
+    });
   };
 
   if (!isAuthenticated) {
@@ -114,59 +142,114 @@ export default function HomePage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Insert Memory Section */}
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <FiUpload className="mr-2" />
-              Insert Memory
-            </h2>
-            <textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Enter text to extract knowledge from..."
-              className="w-full h-32 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={handleInsertMemory}
-              disabled={isLoading}
-              className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition"
-            >
-              {isLoading ? 'Processing...' : 'Extract & Store Triples'}
-            </button>
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 mb-6">
+          <button
+            onClick={() => setActiveTab('input')}
+            className={`px-4 py-2 rounded-t-lg transition ${
+              activeTab === 'input'
+                ? 'bg-gray-800 text-white'
+                : 'bg-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            <FiUpload className="inline mr-2" />
+            Input & Query
+          </button>
+          <button
+            onClick={() => setActiveTab('graph')}
+            className={`px-4 py-2 rounded-t-lg transition ${
+              activeTab === 'graph'
+                ? 'bg-gray-800 text-white'
+                : 'bg-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            <FiEye className="inline mr-2" />
+            Graph Visualization
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'input' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Insert Memory Section */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <FiUpload className="mr-2" />
+                Insert Memory
+              </h2>
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Enter text to extract knowledge from..."
+                className="w-full h-32 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleInsertMemory}
+                disabled={isLoading}
+                className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition"
+              >
+                {isLoading ? 'Processing...' : 'Extract & Store Triples'}
+              </button>
+            </div>
+
+            {/* Query Memory Section */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <FiSearch className="mr-2" />
+                Query Memory
+              </h2>
+              <input
+                type="text"
+                value={queryText}
+                onChange={(e) => setQueryText(e.target.value)}
+                placeholder="Search the knowledge graph..."
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleQuery}
+                disabled={isLoading}
+                className="mt-4 w-full py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition"
+              >
+                {isLoading ? 'Searching...' : 'Search'}
+              </button>
+
+              {queryResults && (
+                <div className="mt-4 p-4 bg-gray-700 rounded-md">
+                  <h3 className="font-semibold mb-2">Results:</h3>
+                  <pre className="text-sm overflow-auto max-h-64">
+                    {JSON.stringify(queryResults, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Query Memory Section */}
+        ) : (
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <FiSearch className="mr-2" />
-              Query Memory
-            </h2>
-            <input
-              type="text"
-              value={queryText}
-              onChange={(e) => setQueryText(e.target.value)}
-              placeholder="Search the knowledge graph..."
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={handleQuery}
-              disabled={isLoading}
-              className="mt-4 w-full py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition"
-            >
-              {isLoading ? 'Searching...' : 'Search'}
-            </button>
-
-            {queryResults && (
-              <div className="mt-4 p-4 bg-gray-700 rounded-md">
-                <h3 className="font-semibold mb-2">Results:</h3>
-                <pre className="text-sm overflow-auto max-h-64">
-                  {JSON.stringify(queryResults, null, 2)}
-                </pre>
+            <h2 className="text-xl font-semibold mb-4">Knowledge Graph</h2>
+            {graphData && graphData.nodes && graphData.nodes.length > 0 ? (
+              <>
+                <GraphView
+                  nodes={graphData.nodes}
+                  edges={graphData.edges}
+                  onNodeClick={handleNodeClick}
+                />
+                {selectedNode && (
+                  <div className="mt-4 p-4 bg-gray-700 rounded-md">
+                    <h3 className="font-semibold mb-2">Selected Node:</h3>
+                    <p><strong>Entity:</strong> {selectedNode.label}</p>
+                    <p><strong>Type:</strong> {selectedNode.type}</p>
+                    <p><strong>ID:</strong> {selectedNode.id}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-400">
+                <p>No graph data available yet.</p>
+                <p>Start by inserting some memories!</p>
               </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* Stats Section */}
         {stats && (
