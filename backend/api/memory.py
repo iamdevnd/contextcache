@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from datetime import datetime
+from ..memory_engine.ranker import get_memory_ranker
 
 from ..db.arango_driver import get_arango_driver
 from ..db.models import Triple, MemoryQuery, MemoryResult, MemoryNode, MemoryEdge, MemoryLayer
@@ -200,4 +201,132 @@ async def get_graph_data(limit: int = 100):
     return {
         "success": True,
         "graph": graph_data
+    }
+
+@router.post("/query/advanced")
+async def advanced_query(
+    query: MemoryQuery,
+    use_semantic: bool = True,
+    use_pagerank: bool = True,
+    use_time_decay: bool = True
+):
+    """Advanced query with ranking algorithms"""
+    db = get_arango_driver()
+    embedder = get_embedder()
+    ranker = get_memory_ranker()
+    
+    # Get all nodes and edges for ranking
+    nodes_collection = db.db.collection('mem_nodes')
+    edges_collection = db.db.collection('mem_edges')
+    
+    # First, do a basic search to get candidate nodes
+    basic_results = db.query_memories(query.query, query.top_k * 3)  # Get more candidates
+    
+    if not basic_results['results']:
+        return {
+            "success": True,
+            "query": query.query,
+            "results": [],
+            "ranking_enabled": True
+        }
+    
+    # Get all nodes and edges for ranking
+    all_nodes = list(nodes_collection.find({}, limit=1000))
+    all_edges = list(edges_collection.find({}, limit=1000))
+    
+    # Prepare for ranking
+    query_embedding = None
+    node_embeddings = {}
+    
+    if use_semantic and embedder.enabled:
+        # Get query embedding
+        query_embedding = embedder.embed_text(query.query)
+        
+        # Get embeddings for all nodes
+        for node in all_nodes:
+            node_id = node['_key']
+            text = node.get('entity', '')
+            if text:
+                embedding = embedder.embed_text(text)
+                if embedding is not None:
+                    node_embeddings[node_id] = embedding
+    
+    # Configure ranking weights
+    weights = {
+        'pagerank': 0.3 if use_pagerank else 0.0,
+        'semantic': 0.4 if use_semantic else 0.0,
+        'time': 0.2 if use_time_decay else 0.0,
+        'degree': 0.1
+    }
+    
+    # Normalize weights
+    total_weight = sum(weights.values())
+    if total_weight > 0:
+        weights = {k: v/total_weight for k, v in weights.items()}
+    
+    # Rank memories
+    ranked_memories = ranker.rank_memories(
+        all_nodes,
+        all_edges,
+        query_embedding,
+        node_embeddings,
+        weights
+    )
+    
+    # Get top K results
+    top_results = []
+    node_map = {node['_key']: node for node in all_nodes}
+    
+    for node_id, score in ranked_memories[:query.top_k]:
+        if node_id in node_map:
+            node = node_map[node_id]
+            # Get edges for this node
+            node_edges = [
+                edge for edge in all_edges 
+                if edge['_from'].endswith(node_id) or edge['_to'].endswith(node_id)
+            ]
+            
+            top_results.append({
+                'node': node,
+                'edges': node_edges,
+                'score': score
+            })
+    
+    return {
+        "success": True,
+        "query": query.query,
+        "results": {
+            "results": top_results,
+            "count": len(top_results)
+        },
+        "ranking_enabled": True,
+        "algorithms_used": {
+            "semantic": use_semantic and embedder.enabled,
+            "pagerank": use_pagerank,
+            "time_decay": use_time_decay
+        }
+    }
+
+@router.post("/index/rebuild")
+async def rebuild_search_index(current_user: TokenData = Depends(get_current_user)):
+    """Rebuild the FAISS search index (admin only)"""
+    db = get_arango_driver()
+    embedder = get_embedder()
+    
+    if not embedder.faiss_enabled:
+        return {
+            "success": False,
+            "message": "FAISS not available"
+        }
+    
+    # Get all nodes
+    nodes_collection = db.db.collection('mem_nodes')
+    all_nodes = list(nodes_collection.find({}, limit=10000))
+    
+    # Build index
+    embedder.build_index_from_nodes(all_nodes)
+    
+    return {
+        "success": True,
+        "message": f"Rebuilt index with {len(all_nodes)} nodes"
     }
