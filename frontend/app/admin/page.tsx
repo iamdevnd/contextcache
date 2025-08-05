@@ -2,25 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // ✅ Added
+import Link from 'next/link';
 import { useAuthStore } from '@/lib/store/auth';
 import api from '@/lib/api';
 import { endpoints } from '@/lib/config';
 import toast from 'react-hot-toast';
-import {
-  FiLogOut,
-  FiDatabase,
-  FiSearch,
-  FiUpload,
-  FiEye,
-  FiSettings, // ✅ Added
-} from 'react-icons/fi';
+import { FiLogOut, FiDatabase, FiSearch, FiUpload, FiEye, FiSettings } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 
 // Dynamically import GraphView to avoid SSR issues
 const GraphView = dynamic(() => import('@/components/GraphView'), {
   ssr: false,
-  loading: () => <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />,
+  loading: () => <div className="h-96 bg-gray-800 rounded-lg animate-pulse" />
 });
 
 export default function HomePage() {
@@ -138,7 +131,6 @@ export default function HomePage() {
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-gray-400">Welcome, {user?.username}</span>
-
             {user?.username === 'admin' && (
               <Link
                 href="/admin"
@@ -148,7 +140,6 @@ export default function HomePage() {
                 <span>Admin</span>
               </Link>
             )}
-
             <button
               onClick={logout}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition"
