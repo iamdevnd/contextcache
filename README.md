@@ -10,6 +10,6 @@ This means:
 - ✅ Free for research, academic, and personal use
 - ❌ Commercial use is **not allowed** without written permission
 - 🏷️ Attribution to the author **must be preserved**
-- 📩 Contact [dn@nikhild.pro](mailto:dn@nikhild.pro) for commercial licensing
+- 📩 Contact for commercial licensing
 
 See `LICENSE` and `NOTICE` for full details.
